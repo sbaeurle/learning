@@ -221,6 +221,7 @@ resource "azurerm_virtual_machine" "vm1" {
     name              = "${var.vm1-name}_osdisk"
     create_option     = "FromImage"
   }
+  delete_os_disk_on_termination = true
 
   storage_image_reference {
     publisher = "MicrosoftWindowsServer"
@@ -301,6 +302,7 @@ resource "azurerm_virtual_machine" "vm2" {
     name              = "${var.vm2-name}_osdisk"
     create_option     = "FromImage"
   }
+  delete_os_disk_on_termination = true
 
   storage_image_reference {
     publisher = "MicrosoftWindowsServer"
@@ -376,6 +378,7 @@ resource "azurerm_virtual_machine" "vm3" {
     name              = "${var.vm3-name}_osdisk"
     create_option     = "FromImage"
   }
+  delete_os_disk_on_termination = true
 
   storage_image_reference {
     publisher = "MicrosoftWindowsServer"
