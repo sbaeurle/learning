@@ -76,6 +76,22 @@ resource "azurerm_virtual_network" "manufacturing" {
   address_space       = ["10.30.0.0/16"]
 }
 
+resource "azurerm_virtual_network_peering" "core-services-manufacturing" {
+  resource_group_name       = azurerm_resource_group.contoso.name
+  virtual_network_name      = azurerm_virtual_network.manufacturing.name
+  remote_virtual_network_id = azurerm_virtual_network.core-services.id
+  name                      = "ManufacturingVnet-to-CoreServicesVnet"
+  allow_forwarded_traffic   = true
+}
+
+resource "azurerm_virtual_network_peering" "manufacturing-core-services" {
+  resource_group_name       = azurerm_resource_group.contoso.name
+  virtual_network_name      = azurerm_virtual_network.core-services.name
+  remote_virtual_network_id = azurerm_virtual_network.manufacturing.id
+  name                      = "CoreServicesVnet-to-ManufacturingVnet"
+  allow_forwarded_traffic   = true
+}
+
 resource "azurerm_subnet" "manufacturing-system" {
   resource_group_name  = azurerm_resource_group.contoso.name
   virtual_network_name = azurerm_virtual_network.manufacturing.name
@@ -299,6 +315,81 @@ resource "azurerm_virtual_machine" "vm2" {
 
   os_profile {
     computer_name  = var.vm2-name
+    admin_username = "adminUsername"
+    admin_password = random_password.vm2.result
+  }
+
+  identity {
+    type = "SystemAssigned"
+  }
+}
+
+variable "vm3-name" {
+  type = string
+}
+
+resource "azurerm_public_ip" "vm3" {
+  name                = var.vm3-name
+  resource_group_name = azurerm_resource_group.contoso.name
+  location            = "westeurope"
+  allocation_method   = "Static"
+}
+
+resource "azurerm_network_interface" "vm3" {
+  resource_group_name = azurerm_resource_group.contoso.name
+  location            = "westeurope"
+  name                = "${var.vm3-name}-nic"
+
+  ip_configuration {
+    primary                       = true
+    name                          = "ipconfig"
+    subnet_id                     = azurerm_subnet.manufacturing-system.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.vm3.id
+  }
+}
+
+resource "random_password" "vm3" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+output "vm3-password" {
+  value     = random_password.vm2.result
+  sensitive = true
+}
+
+resource "azurerm_virtual_machine" "vm3" {
+  resource_group_name = azurerm_resource_group.contoso.name
+  location            = "westeurope"
+  name                = var.vm3-name
+  vm_size             = "Standard_D2s_v3"
+
+  network_interface_ids = [
+    azurerm_network_interface.vm3.id
+  ]
+
+  storage_os_disk {
+    caching           = "ReadWrite"
+    managed_disk_type = "Standard_LRS"
+    name              = "${var.vm3-name}_osdisk"
+    create_option     = "FromImage"
+  }
+
+  storage_image_reference {
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2022-Datacenter"
+    version   = "latest"
+  }
+
+  os_profile_windows_config {
+    provision_vm_agent = true
+  }
+
+  os_profile {
+    computer_name  = var.vm3-name
     admin_username = "adminUsername"
     admin_password = random_password.vm2.result
   }
