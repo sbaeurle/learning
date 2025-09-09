@@ -7,6 +7,114 @@ terraform {
   }
 }
 
-provider "azurerm" {
-  # Configuration options
+variable "tenant-id" {
+  type = string
 }
+
+variable "subscription-id" {
+  type = string
+}
+
+variable "contact" {
+  type = string
+}
+
+provider "azurerm" {
+  tenant_id       = var.tenant-id
+  subscription_id = var.subscription-id
+  features {}
+}
+
+resource "azurerm_resource_group" "contoso" {
+  name     = "ContosoResourceGroup"
+  location = "eastus"
+  tags = {
+    Description = "azure-network-engineer-associate-learning"
+    Contact     = var.contact
+  }
+}
+
+resource "azurerm_virtual_network" "core-services" {
+  resource_group_name = azurerm_resource_group.contoso.name
+  name                = "CoreServicesVnet"
+  location            = "eastus"
+  address_space       = ["10.20.0.0/16"]
+}
+
+resource "azurerm_subnet" "gateway" {
+  resource_group_name  = azurerm_resource_group.contoso.name
+  virtual_network_name = azurerm_virtual_network.core-services.name
+  name                 = "GatewaySubnet"
+  address_prefixes     = ["10.20.0.0/27"]
+}
+
+resource "azurerm_subnet" "shared-services" {
+  resource_group_name  = azurerm_resource_group.contoso.name
+  virtual_network_name = azurerm_virtual_network.core-services.name
+  name                 = "SharedServicesSubnet"
+  address_prefixes     = ["10.20.10.0/24"]
+}
+
+resource "azurerm_subnet" "database" {
+  resource_group_name  = azurerm_resource_group.contoso.name
+  virtual_network_name = azurerm_virtual_network.core-services.name
+  name                 = "DatabaseSubnet"
+  address_prefixes     = ["10.20.20.0/24"]
+}
+
+resource "azurerm_subnet" "public-web-service" {
+  resource_group_name  = azurerm_resource_group.contoso.name
+  virtual_network_name = azurerm_virtual_network.core-services.name
+  name                 = "PublicWebServiceSubnet"
+  address_prefixes     = ["10.20.30.0/24"]
+}
+
+resource "azurerm_virtual_network" "manufacturing" {
+  resource_group_name = azurerm_resource_group.contoso.name
+  name                = "ManufacturingVnet"
+  location            = "westeurope"
+  address_space       = ["10.30.0.0/16"]
+}
+
+resource "azurerm_subnet" "manufacturing-system" {
+  resource_group_name  = azurerm_resource_group.contoso.name
+  virtual_network_name = azurerm_virtual_network.manufacturing.name
+  name                 = "ManufacturingSystemSubnet"
+  address_prefixes     = ["10.30.10.0/24"]
+}
+
+resource "azurerm_subnet" "sensors-1" {
+  resource_group_name  = azurerm_resource_group.contoso.name
+  virtual_network_name = azurerm_virtual_network.manufacturing.name
+  name                 = "SensorSubnet1"
+  address_prefixes     = ["10.30.20.0/24"]
+}
+
+resource "azurerm_subnet" "sensors-2" {
+  resource_group_name  = azurerm_resource_group.contoso.name
+  virtual_network_name = azurerm_virtual_network.manufacturing.name
+  name                 = "SensorSubnet2"
+  address_prefixes     = ["10.30.21.0/24"]
+}
+
+resource "azurerm_subnet" "sensors-3" {
+  resource_group_name  = azurerm_resource_group.contoso.name
+  virtual_network_name = azurerm_virtual_network.manufacturing.name
+  name                 = "SensorSubnet3"
+  address_prefixes     = ["10.30.23.0/24"]
+}
+
+resource "azurerm_virtual_network" "research" {
+  resource_group_name = azurerm_resource_group.contoso.name
+  name                = "ResearchVnet"
+  location            = "southeastasia"
+  address_space       = ["10.40.0.0/16"]
+}
+
+resource "azurerm_subnet" "research-system" {
+  resource_group_name  = azurerm_resource_group.contoso.name
+  virtual_network_name = azurerm_virtual_network.research.name
+  name                 = "ResearchSystemSubnet"
+  address_prefixes     = ["10.40.0.0/24"]
+}
+
