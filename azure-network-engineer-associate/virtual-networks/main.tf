@@ -118,3 +118,192 @@ resource "azurerm_subnet" "research-system" {
   address_prefixes     = ["10.40.0.0/24"]
 }
 
+resource "azurerm_private_dns_zone" "contoso" {
+  resource_group_name = azurerm_resource_group.contoso.name
+  name                = "contoso.com"
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "core-services-link" {
+  resource_group_name   = azurerm_resource_group.contoso.name
+  private_dns_zone_name = azurerm_private_dns_zone.contoso.name
+  virtual_network_id    = azurerm_virtual_network.core-services.id
+  name                  = "CoreServicesVnetLink"
+  registration_enabled  = true
+}
+
+resource "azurerm_network_security_group" "rdp" {
+  resource_group_name = azurerm_resource_group.contoso.name
+  location            = azurerm_resource_group.contoso.location
+  name                = "RdpNsg"
+  security_rule {
+    name                       = "allow-rdp"
+    protocol                   = "Tcp"
+    priority                   = 1000
+    source_address_prefix      = "*"
+    source_port_range          = "*"
+    destination_address_prefix = "*"
+    destination_port_range     = "3389"
+    direction                  = "Inbound"
+    access                     = "Allow"
+  }
+}
+
+variable "vm1-name" {
+  type = string
+}
+
+resource "azurerm_public_ip" "vm1" {
+  name                = var.vm1-name
+  resource_group_name = azurerm_resource_group.contoso.name
+  location            = azurerm_resource_group.contoso.location
+  allocation_method   = "Static"
+}
+
+resource "azurerm_network_interface" "vm1" {
+  resource_group_name = azurerm_resource_group.contoso.name
+  location            = azurerm_resource_group.contoso.location
+  name                = "${var.vm1-name}-nic"
+
+  ip_configuration {
+    primary                       = true
+    name                          = "ipconfig"
+    subnet_id                     = azurerm_subnet.shared-services.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.vm1.id
+  }
+}
+
+resource "azurerm_network_interface_security_group_association" "vm1-rdp" {
+  network_interface_id      = azurerm_network_interface.vm1.id
+  network_security_group_id = azurerm_network_security_group.rdp.id
+}
+
+resource "random_password" "vm1" {
+  length           = 16
+  special          = true
+  override_special = "!#$%"
+}
+
+output "vm1-password" {
+  value     = random_password.vm1.result
+  sensitive = true
+}
+
+resource "azurerm_virtual_machine" "vm1" {
+  resource_group_name = azurerm_resource_group.contoso.name
+  location            = azurerm_resource_group.contoso.location
+  name                = var.vm1-name
+  vm_size             = "Standard_D2s_v3"
+
+  network_interface_ids = [
+    azurerm_network_interface.vm1.id
+  ]
+
+  storage_os_disk {
+    caching           = "ReadWrite"
+    managed_disk_type = "Standard_LRS"
+    name              = "${var.vm1-name}_osdisk"
+    create_option     = "FromImage"
+  }
+
+  storage_image_reference {
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2022-Datacenter"
+    version   = "latest"
+  }
+
+  os_profile_windows_config {
+    provision_vm_agent = true
+  }
+
+  os_profile {
+    computer_name  = var.vm1-name
+    admin_username = "adminUsername"
+    admin_password = random_password.vm1.result
+  }
+
+  identity {
+    type = "SystemAssigned"
+  }
+}
+
+variable "vm2-name" {
+  type = string
+}
+
+resource "azurerm_public_ip" "vm2" {
+  name                = var.vm2-name
+  resource_group_name = azurerm_resource_group.contoso.name
+  location            = azurerm_resource_group.contoso.location
+  allocation_method   = "Static"
+}
+
+resource "azurerm_network_interface" "vm2" {
+  resource_group_name = azurerm_resource_group.contoso.name
+  location            = azurerm_resource_group.contoso.location
+  name                = "${var.vm2-name}-nic"
+
+  ip_configuration {
+    primary                       = true
+    name                          = "ipconfig"
+    subnet_id                     = azurerm_subnet.shared-services.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.vm2.id
+  }
+}
+
+resource "azurerm_network_interface_security_group_association" "vm2-rdp" {
+  network_interface_id      = azurerm_network_interface.vm2.id
+  network_security_group_id = azurerm_network_security_group.rdp.id
+}
+
+resource "random_password" "vm2" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+output "vm2-password" {
+  value     = random_password.vm2.result
+  sensitive = true
+}
+
+resource "azurerm_virtual_machine" "vm2" {
+  resource_group_name = azurerm_resource_group.contoso.name
+  location            = azurerm_resource_group.contoso.location
+  name                = var.vm2-name
+  vm_size             = "Standard_D2s_v3"
+
+  network_interface_ids = [
+    azurerm_network_interface.vm2.id
+  ]
+
+  storage_os_disk {
+    caching           = "ReadWrite"
+    managed_disk_type = "Standard_LRS"
+    name              = "${var.vm2-name}_osdisk"
+    create_option     = "FromImage"
+  }
+
+  storage_image_reference {
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2022-Datacenter"
+    version   = "latest"
+  }
+
+  os_profile_windows_config {
+    provision_vm_agent = true
+  }
+
+  os_profile {
+    computer_name  = var.vm2-name
+    admin_username = "adminUsername"
+    admin_password = random_password.vm2.result
+  }
+
+  identity {
+    type = "SystemAssigned"
+  }
+}
