@@ -19,6 +19,12 @@ variable "contact" {
   type = string
 }
 
+variable "psk" {
+  type      = string
+  sensitive = true
+  default   = "4-v3ry-53cr37-1p53c-5h4r3d-k3y"
+}
+
 variable "core-services_vnet_name" {
   type        = string
   default     = "CoreServicesVnet"
@@ -131,6 +137,13 @@ resource "azurerm_subnet" "sensor-3" {
   address_prefixes     = ["10.30.22.0/24"]
 }
 
+resource "azurerm_subnet" "manufacturing-gateway" {
+  name                 = "GatewaySubnet"
+  resource_group_name  = azurerm_resource_group.contoso.name
+  virtual_network_name = azurerm_virtual_network.manufacturing.name
+  address_prefixes     = ["10.30.10.0/27"]
+}
+
 # Research Virtual Network (Southeast Asia)
 resource "azurerm_virtual_network" "research" {
   name                = var.research_vnet_name
@@ -177,4 +190,58 @@ resource "azurerm_virtual_network_gateway" "core-services-gateway" {
     private_ip_address_allocation = "Dynamic"
     subnet_id                     = azurerm_subnet.gateway.id
   }
+}
+
+resource "azurerm_public_ip" "manufacturing-gateway-pip" {
+  name                = "manufacturing-gateway-pip"
+  location            = "northeurope"
+  resource_group_name = azurerm_resource_group.contoso.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  ip_version          = "IPv4"
+}
+
+resource "azurerm_virtual_network_gateway" "manufacturing-gateway" {
+  name                = "ManufacturingVnetGateway"
+  resource_group_name = azurerm_resource_group.contoso.name
+  location            = "northeurope"
+
+  type     = "Vpn"
+  vpn_type = "RouteBased"
+
+  active_active = false
+  enable_bgp    = false
+  sku           = "VpnGw1"
+  generation    = "Generation1"
+
+  ip_configuration {
+    name                          = "manufacturing-gateway-config"
+    public_ip_address_id          = azurerm_public_ip.manufacturing-gateway-pip.id
+    private_ip_address_allocation = "Dynamic"
+    subnet_id                     = azurerm_subnet.manufacturing-gateway.id
+  }
+}
+
+resource "azurerm_virtual_network_gateway_connection" "us_to_europe" {
+  name                = "core-to-manufacturing"
+  resource_group_name = azurerm_resource_group.contoso.name
+  location            = azurerm_resource_group.contoso.location
+
+  type                            = "Vnet2Vnet"
+  virtual_network_gateway_id      = azurerm_virtual_network_gateway.core-services-gateway.id
+  peer_virtual_network_gateway_id = azurerm_virtual_network_gateway.manufacturing-gateway.id
+
+  shared_key = var.psk
+}
+
+resource "azurerm_virtual_network_gateway_connection" "europe_to_us" {
+  name                = "manufacturing-to-core"
+  resource_group_name = azurerm_resource_group.contoso.name
+  location            = "northeurope"
+
+  type                            = "Vnet2Vnet"
+  virtual_network_gateway_id      = azurerm_virtual_network_gateway.manufacturing-gateway.id
+  peer_virtual_network_gateway_id = azurerm_virtual_network_gateway.core-services-gateway.id
+
+  shared_key = var.psk
 }
