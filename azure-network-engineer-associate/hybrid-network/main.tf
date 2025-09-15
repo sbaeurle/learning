@@ -148,3 +148,33 @@ resource "azurerm_subnet" "research-system" {
   virtual_network_name = azurerm_virtual_network.research.name
   address_prefixes     = ["10.40.40.0/24"]
 }
+
+resource "azurerm_public_ip" "core-services-gateway-pip" {
+  name                = "core-service-gateway-pip"
+  location            = azurerm_resource_group.contoso.location
+  resource_group_name = azurerm_resource_group.contoso.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  ip_version          = "IPv4"
+}
+
+resource "azurerm_virtual_network_gateway" "core-services-gateway" {
+  name                = "CoreServicesVnetGateway"
+  resource_group_name = azurerm_resource_group.contoso.name
+  location            = azurerm_resource_group.contoso.location
+
+  type     = "Vpn"
+  vpn_type = "RouteBased"
+
+  active_active = false
+  enable_bgp    = false
+  sku           = "VpnGw1"
+  generation    = "Generation1"
+
+  ip_configuration {
+    name                          = "core-gateway-config"
+    public_ip_address_id          = azurerm_public_ip.core-services-gateway-pip.id
+    private_ip_address_allocation = "Dynamic"
+    subnet_id                     = azurerm_subnet.gateway.id
+  }
+}
