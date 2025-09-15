@@ -141,7 +141,7 @@ resource "azurerm_subnet" "manufacturing-gateway" {
   name                 = "GatewaySubnet"
   resource_group_name  = azurerm_resource_group.contoso.name
   virtual_network_name = azurerm_virtual_network.manufacturing.name
-  address_prefixes     = ["10.30.10.0/27"]
+  address_prefixes     = ["10.30.30.0/27"]
 }
 
 # Research Virtual Network (Southeast Asia)
@@ -222,7 +222,7 @@ resource "azurerm_virtual_network_gateway" "manufacturing-gateway" {
   }
 }
 
-resource "azurerm_virtual_network_gateway_connection" "us_to_europe" {
+resource "azurerm_virtual_network_gateway_connection" "core-to-manufacturing" {
   name                = "core-to-manufacturing"
   resource_group_name = azurerm_resource_group.contoso.name
   location            = azurerm_resource_group.contoso.location
@@ -234,7 +234,7 @@ resource "azurerm_virtual_network_gateway_connection" "us_to_europe" {
   shared_key = var.psk
 }
 
-resource "azurerm_virtual_network_gateway_connection" "europe_to_us" {
+resource "azurerm_virtual_network_gateway_connection" "manufacturing-to-core" {
   name                = "manufacturing-to-core"
   resource_group_name = azurerm_resource_group.contoso.name
   location            = "northeurope"
