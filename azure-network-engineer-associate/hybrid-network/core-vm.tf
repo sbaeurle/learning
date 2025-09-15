@@ -97,5 +97,9 @@ resource "azurerm_windows_virtual_machine" "vm1" {
     version   = "latest"
   }
 
+  identity {
+    type = "SystemAssigned"
+  }
+
   tags = azurerm_resource_group.contoso.tags
 }
