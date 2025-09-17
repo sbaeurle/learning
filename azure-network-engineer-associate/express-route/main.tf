@@ -63,3 +63,28 @@ resource "azurerm_virtual_network_gateway" "core-services-gateway" {
     subnet_id = azurerm_subnet.gateway-subnet.id
   }
 }
+
+resource "azurerm_resource_group" "express-route" {
+  name     = "ExpressRouteResourceGroup"
+  location = "eastus2"
+  tags = {
+    Description = "azure-network-engineer-associate-learning"
+    Contact     = var.contact
+    Environment = "learning"
+  }
+}
+
+resource "azurerm_express_route_circuit" "name" {
+  name                = "TestERCircuit"
+  resource_group_name = azurerm_resource_group.express-route.name
+  location            = azurerm_resource_group.express-route.location
+
+  sku {
+    family = "MeteredData"
+    tier   = "Standard"
+  }
+
+  bandwidth_in_mbps     = 50
+  peering_location      = "Seattle"
+  service_provider_name = "Equinix"
+}
