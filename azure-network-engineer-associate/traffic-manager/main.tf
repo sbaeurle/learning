@@ -43,10 +43,19 @@ resource "azurerm_service_plan" "s1-asp-eu" {
   os_type             = "Windows"
 }
 
+resource "azurerm_log_analytics_workspace" "workspace-eu" {
+  name                = "ContosoLogSpaceEastUs"
+  resource_group_name = azurerm_resource_group.tm1-group-eu.name
+  location            = azurerm_resource_group.tm1-group-eu.location
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+}
+
 resource "azurerm_application_insights" "insights-eu" {
   name                = "ContosoAppInsightsEastUS"
   location            = azurerm_resource_group.tm1-group-eu.location
   resource_group_name = azurerm_resource_group.tm1-group-eu.name
+  workspace_id        = azurerm_log_analytics_workspace.workspace-eu.id
   application_type    = "web"
 }
 
@@ -82,10 +91,19 @@ resource "azurerm_service_plan" "s1-asp-we" {
   os_type             = "Windows"
 }
 
+resource "azurerm_log_analytics_workspace" "workspace-we" {
+  name                = "ContosoLogSpaceWestEurope"
+  resource_group_name = azurerm_resource_group.tm2-group-we.name
+  location            = azurerm_resource_group.tm2-group-we.location
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+}
+
 resource "azurerm_application_insights" "insights-we" {
   name                = "ContosoAppInsightsWestEurope"
   location            = azurerm_resource_group.tm2-group-we.location
   resource_group_name = azurerm_resource_group.tm2-group-we.name
+  workspace_id        = azurerm_log_analytics_workspace.workspace-we.id
   application_type    = "web"
 }
 
