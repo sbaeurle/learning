@@ -120,3 +120,39 @@ resource "azurerm_windows_web_app" "windows-web-app-we" {
     "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.insights-we.connection_string
   }
 }
+
+resource "azurerm_traffic_manager_profile" "xy" {
+  name                   = "Contoso-TMProfileXY"
+  resource_group_name    = azurerm_resource_group.tm1-group-eu.name
+  traffic_routing_method = "Priority"
+
+  dns_config {
+    relative_name = "contoso-xy"
+    ttl           = 100
+  }
+
+  monitor_config {
+    protocol                     = "HTTPS"
+    port                         = 443
+    path                         = "/"
+    interval_in_seconds          = 30
+    timeout_in_seconds           = 9
+    tolerated_number_of_failures = 3
+  }
+}
+
+resource "azurerm_traffic_manager_azure_endpoint" "primary" {
+  name       = "primary"
+  profile_id = azurerm_traffic_manager_profile.xy.id
+
+  priority           = 1
+  target_resource_id = azurerm_windows_web_app.windows-web-app-eu.id
+}
+
+resource "azurerm_traffic_manager_azure_endpoint" "failover" {
+  name       = "failover"
+  profile_id = azurerm_traffic_manager_profile.xy.id
+
+  priority           = 2
+  target_resource_id = azurerm_windows_web_app.windows-web-app-we.id
+}
