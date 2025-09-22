@@ -73,6 +73,11 @@ resource "azurerm_windows_web_app" "windows-web-app-eu" {
     "APPINSIGHTS_INSTRUMENTATIONKEY"        = azurerm_application_insights.insights-eu.instrumentation_key
     "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.insights-eu.connection_string
   }
+
+  lifecycle {
+    ignore_changes = [tags]
+  }
+
 }
 
 resource "azurerm_resource_group" "rg-cu" {
@@ -123,4 +128,68 @@ resource "azurerm_windows_web_app" "windows-web-app-cu" {
     "APPINSIGHTS_INSTRUMENTATIONKEY"        = azurerm_application_insights.insights-cu.instrumentation_key
     "APPLICATIONINSIGHTS_CONNECTION_STRING" = azurerm_application_insights.insights-cu.connection_string
   }
+
+  lifecycle {
+    ignore_changes = [tags]
+  }
+
+}
+
+
+resource "azurerm_cdn_frontdoor_profile" "front-door" {
+  name                = "FrontDoorXY"
+  resource_group_name = azurerm_resource_group.rg-cu.name
+  sku_name            = "Standard_AzureFrontDoor"
+}
+
+resource "azurerm_cdn_frontdoor_endpoint" "fd" {
+  name                     = "FDendpoint"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.front-door.id
+}
+
+resource "azurerm_cdn_frontdoor_origin_group" "default" {
+  name                     = "default-origin-group"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.front-door.id
+  load_balancing {
+    additional_latency_in_milliseconds = 50
+    sample_size                        = 5
+    successful_samples_required        = 4
+  }
+}
+
+resource "azurerm_cdn_frontdoor_origin" "as-cu" {
+  name                           = "central-us-origin"
+  cdn_frontdoor_origin_group_id  = azurerm_cdn_frontdoor_origin_group.default.id
+  enabled                        = true
+  host_name                      = azurerm_windows_web_app.windows-web-app-cu.default_hostname
+  certificate_name_check_enabled = true
+  http_port                      = 80
+  https_port                     = 443
+  origin_host_header             = azurerm_windows_web_app.windows-web-app-cu.default_hostname
+  priority                       = 1
+  weight                         = 1000
+}
+
+resource "azurerm_cdn_frontdoor_origin" "as-eu" {
+  name                           = "east-us-origin"
+  cdn_frontdoor_origin_group_id  = azurerm_cdn_frontdoor_origin_group.default.id
+  enabled                        = true
+  host_name                      = azurerm_windows_web_app.windows-web-app-eu.default_hostname
+  certificate_name_check_enabled = true
+  http_port                      = 80
+  https_port                     = 443
+  origin_host_header             = azurerm_windows_web_app.windows-web-app-eu.default_hostname
+  priority                       = 1
+  weight                         = 1000
+}
+
+resource "azurerm_cdn_frontdoor_route" "default" {
+  name                          = "default"
+  cdn_frontdoor_endpoint_id     = azurerm_cdn_frontdoor_endpoint.fd.id
+  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.default.id
+  cdn_frontdoor_origin_ids      = [azurerm_cdn_frontdoor_origin.as-cu.id, azurerm_cdn_frontdoor_origin.as-eu.id]
+
+  enabled             = true
+  patterns_to_match   = ["/*"]
+  supported_protocols = ["Http", "Https"]
 }
