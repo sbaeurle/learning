@@ -27,7 +27,7 @@ provider "azurerm" {
 
 resource "azurerm_resource_group" "lb-group" {
   name     = "IntLB-RG"
-  location = "eastus"
+  location = "westeurope"
 
   tags = {
     Description = "azure-network-engineer-associate-learning"
@@ -135,4 +135,29 @@ resource "azurerm_windows_virtual_machine" "test-vm" {
   }
 
   tags = azurerm_resource_group.lb-group.tags
+}
+
+resource "azurerm_public_ip" "nat" {
+  name                = "nat-pip"
+  resource_group_name = azurerm_resource_group.lb-group.name
+  location            = azurerm_resource_group.lb-group.location
+  allocation_method   = "Static"
+}
+
+resource "azurerm_nat_gateway" "nat" {
+  name                    = "nat"
+  resource_group_name     = azurerm_resource_group.lb-group.name
+  location                = azurerm_resource_group.lb-group.location
+  sku_name                = "Standard"
+  idle_timeout_in_minutes = 10
+}
+
+resource "azurerm_subnet_nat_gateway_association" "backend" {
+  nat_gateway_id = azurerm_nat_gateway.nat.id
+  subnet_id      = azurerm_subnet.backend-subnet.id
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "example" {
+  nat_gateway_id       = azurerm_nat_gateway.nat.id
+  public_ip_address_id = azurerm_public_ip.nat.id
 }
